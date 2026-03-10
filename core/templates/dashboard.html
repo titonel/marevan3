@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
+
 <div class="container-fluid mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -20,11 +22,24 @@
         </div>
     </div>
 
+    <div class="card shadow-sm border-0 mb-4 bg-white">
+        <div class="card-body px-4 py-3">
+            <h6 class="text-secondary fw-bold mb-4"><i class="bi bi-calendar-range"></i> Filtro Temporal (Data dos Exames)</h6>
+
+            <div id="slider-temporal" class="mb-3 mx-2"></div>
+
+            <div class="d-flex justify-content-between text-primary fw-bold small mt-3">
+                <span id="data-inicio-label">--/--/----</span>
+                <span id="data-fim-label">--/--/----</span>
+            </div>
+        </div>
+    </div>
+
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card shadow-sm border-start border-4 border-primary h-100">
                 <div class="card-body py-3">
-                    <small class="text-muted text-uppercase fw-bold">Pacientes Ativos</small>
+                    <small class="text-muted text-uppercase fw-bold">Pacientes (Filtrados)</small>
                     <h2 class="display-6 fw-bold text-dark mb-0" id="kpi-pacientes">--</h2>
                 </div>
             </div>
@@ -32,7 +47,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-start border-4 border-success h-100">
                 <div class="card-body py-3">
-                    <small class="text-muted text-uppercase fw-bold">Exames (Mês)</small>
+                    <small class="text-muted text-uppercase fw-bold">Exames no Período</small>
                     <h2 class="display-6 fw-bold text-dark mb-0" id="kpi-exames">--</h2>
                 </div>
             </div>
@@ -40,7 +55,7 @@
         <div class="col-md-3">
             <div class="card shadow-sm border-start border-4 border-warning h-100">
                 <div class="card-body py-3">
-                    <small class="text-muted text-uppercase fw-bold">Na Meta (30d)</small>
+                    <small class="text-muted text-uppercase fw-bold">Na Meta</small>
                     <h2 class="display-6 fw-bold text-dark mb-0" id="kpi-meta">--</h2>
                 </div>
             </div>
@@ -76,7 +91,7 @@
 
         <div class="col-md-4">
             <div class="card shadow border-0 h-100">
-                <div class="card-header bg-white fw-bold">Controle INR (Geral)</div>
+                <div class="card-header bg-white fw-bold">Controle INR (Período)</div>
                 <div class="card-body">
                     <canvas id="chartInr" style="max-height: 250px;"></canvas>
                 </div>
@@ -106,11 +121,13 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
 
 <script>
-    // Variáveis Globais
     let rawData = [];
     let charts = {};
+    let dataInicioGlobal = 0;
+    let dataFimGlobal = 0;
 
     document.addEventListener('DOMContentLoaded', function() {
         carregarDadosIniciais();
@@ -119,73 +136,178 @@
     function carregarDadosIniciais() {
         fetch('/api/dashboard/')
             .then(r => {
-                if (!r.ok) throw new Error("Erro na resposta da API");
+                if (!r.ok) throw new Error("Erro HTTP: " + r.status);
                 return r.json();
             })
             .then(data => {
-                // Armazena todos os dados brutos e preenche o filtro de cidades
-                rawData = data.dados_pacientes;
-                popularFiltroCidades();
+                console.log("Dados recebidos da API:", data); // Para diagnóstico no F12
+                rawData = data.dados_pacientes || [];
 
-                // Desenha o Dashboard (isso também vai calcular os KPIs a primeira vez)
-                atualizarDashboard();
+                if (rawData.length === 0) {
+                    exibirMensagemVazio();
+                    return;
+                }
+
+                popularFiltroCidades();
+                inicializarSlider();
             })
             .catch(e => {
-                console.error("Erro ao carregar o dashboard:", e);
-                alert("Erro ao carregar os dados. Verifique a conexão com o servidor.");
+                console.error("Erro Crítico no JS:", e);
+                alert("Erro ao processar dados. Verifique o console (F12) para detalhes técnicos.");
             });
     }
 
-    // --- Lógica de Filtros, Processamento e KPIs ---
+    function inicializarSlider() {
+        let minTime = Infinity;
+        let maxTime = -Infinity;
+
+        rawData.forEach(p => {
+            if (p.medicoes && p.medicoes.length > 0) {
+                p.medicoes.forEach(m => {
+                    let time = new Date(m.data + "T12:00:00").getTime();
+                    if (!isNaN(time)) {
+                        if (time < minTime) minTime = time;
+                        if (time > maxTime) maxTime = time;
+                    }
+                });
+            }
+        });
+
+        // Se após varrer tudo ainda for Infinity, define datas padrão
+        if (minTime === Infinity || maxTime === -Infinity) {
+            maxTime = new Date().setHours(12,0,0,0);
+            minTime = maxTime - (30 * 24 * 60 * 60 * 1000);
+        }
+
+        // Evita erro de range do noUiSlider
+        if (minTime >= maxTime) {
+            minTime -= 86400000; // -1 dia
+            maxTime += 86400000; // +1 dia
+        }
+
+        const slider = document.getElementById('slider-temporal');
+        if (slider.noUiSlider) slider.noUiSlider.destroy();
+
+        noUiSlider.create(slider, {
+            start: [minTime, maxTime],
+            connect: true,
+            range: { 'min': minTime, 'max': maxTime },
+            step: 24 * 60 * 60 * 1000,
+            format: { to: v => v, from: v => v }
+        });
+
+        slider.noUiSlider.on('update', function (values) {
+            dataInicioGlobal = parseInt(values[0]);
+            dataFimGlobal = parseInt(values[1]);
+            document.getElementById('data-inicio-label').innerText = new Date(dataInicioGlobal).toLocaleDateString('pt-BR');
+            document.getElementById('data-fim-label').innerText = new Date(dataFimGlobal).toLocaleDateString('pt-BR');
+            atualizarDashboard();
+        });
+    }
+
+    function exibirMensagemVazio() {
+        document.getElementById('kpi-pacientes').innerText = "0";
+        document.getElementById('kpi-exames').innerText = "0";
+        document.getElementById('kpi-meta').innerText = "0%";
+        document.getElementById('kpi-fora').innerText = "0%";
+        console.warn("Nenhum dado retornado pela API.");
+    }
+
+    function inicializarSlider() {
+        let minTime = Infinity;
+        let maxTime = -Infinity;
+
+        // Procura a maior e menor data entre todos os exames de todos os pacientes
+        rawData.forEach(p => {
+            if (p.medicoes && Array.isArray(p.medicoes)) {
+                p.medicoes.forEach(m => {
+                    if (m.data) {
+                        let time = new Date(m.data + "T12:00:00").getTime(); // Usa meio-dia para evitar erros de fuso horário
+                        if (!isNaN(time)) {
+                            if (time < minTime) minTime = time;
+                            if (time > maxTime) maxTime = time;
+                        }
+                    }
+                });
+            }
+        });
+
+        // Caso de segurança: Se não houver nenhum exame em nenhum paciente
+        if (minTime === Infinity || maxTime === -Infinity) {
+            maxTime = new Date().getTime();
+            minTime = maxTime - (30 * 24 * 60 * 60 * 1000); // 30 dias atrás
+        }
+
+        // Se só houver exames de um único dia, expande o intervalo para o slider não travar
+        if (minTime === maxTime) {
+            minTime -= (24 * 60 * 60 * 1000);
+            maxTime += (24 * 60 * 60 * 1000);
+        }
+
+        const slider = document.getElementById('slider-temporal');
+        if (slider.noUiSlider) slider.noUiSlider.destroy();
+
+        noUiSlider.create(slider, {
+            start: [minTime, maxTime],
+            connect: true,
+            range: { 'min': minTime, 'max': maxTime },
+            step: 24 * 60 * 60 * 1000,
+            format: { to: v => v, from: v => v }
+        });
+
+        slider.noUiSlider.on('update', function (values) {
+            dataInicioGlobal = parseInt(values[0]);
+            dataFimGlobal = parseInt(values[1]);
+            document.getElementById('data-inicio-label').innerText = new Date(dataInicioGlobal).toLocaleDateString('pt-BR');
+            document.getElementById('data-fim-label').innerText = new Date(dataFimGlobal).toLocaleDateString('pt-BR');
+            atualizarDashboard();
+        });
+    }
 
     function atualizarDashboard() {
         const sexFilter = document.getElementById('filtroSexo').value;
         const cityFilter = document.getElementById('filtroCidade').value;
 
-        // 1. Filtra os Pacientes em tempo real
-        const filteredData = rawData.filter(p => {
-            return (sexFilter === "" || p.sexo === sexFilter) &&
-                   (cityFilter === "" || p.municipio === cityFilter);
-        });
-
-        // 2. ATUALIZA OS KPIs DO TOPO DA TELA DINAMICAMENTE
         let kpiExames = 0;
         let kpiBaixo = 0;
         let kpiMeta = 0;
         let kpiAlto = 0;
 
-        // Soma os exames APENAS dos pacientes que passaram no filtro
+        const filteredData = rawData.filter(p => {
+            return (sexFilter === "" || p.sexo === sexFilter) &&
+                   (cityFilter === "" || p.municipio === cityFilter);
+        });
+
         filteredData.forEach(p => {
-            kpiExames += p.total_exames;
-            kpiBaixo += p.exames_baixo;
-            kpiMeta += p.exames_meta;
-            kpiAlto += p.exames_alto;
+            if (p.medicoes) {
+                p.medicoes.forEach(m => {
+                    let mTime = new Date(m.data + "T12:00:00").getTime();
+                    if (mTime >= dataInicioGlobal && mTime <= dataFimGlobal) {
+                        kpiExames++;
+                        if (m.inr < p.meta_min) kpiBaixo++;
+                        else if (m.inr > p.meta_max) kpiAlto++;
+                        else kpiMeta++;
+                    }
+                });
+            }
         });
 
         const totalInr = kpiBaixo + kpiMeta + kpiAlto;
 
-        // Preenche os cartões
         document.getElementById('kpi-pacientes').innerText = filteredData.length;
         document.getElementById('kpi-exames').innerText = kpiExames;
-        document.getElementById('kpi-meta').innerText = totalInr ? ((kpiMeta/totalInr)*100).toFixed(0) + '%' : '0%';
-        document.getElementById('kpi-fora').innerText = totalInr ? (((totalInr - kpiMeta)/totalInr)*100).toFixed(0) + '%' : '0%';
+        document.getElementById('kpi-meta').innerText = totalInr ? Math.round((kpiMeta/totalInr)*100) + '%' : '0%';
+        document.getElementById('kpi-fora').innerText = totalInr ? Math.round(((totalInr - kpiMeta)/totalInr)*100) + '%' : '0%';
 
-        // Atualiza também o Gráfico de Pizza de INR com os dados filtrados
+        // Atualiza Gráficos com o rótulo correto
         renderChartInr([kpiBaixo, kpiMeta, kpiAlto]);
 
-        // 3. Atualiza os demais gráficos
-        const porSexo = agrupar(filteredData, 'sexo');
-        const porCidade = agrupar(filteredData, 'municipio');
-        const porPatologia = agrupar(filteredData, 'indicacao');
-        const porIdade = agruparFaixasEtarias(filteredData);
-
-        renderChart('chartSexo', 'doughnut', porSexo, ['#36a2eb', '#ff6384']);
-        renderChart('chartCidade', 'bar', porCidade, '#4bc0c0');
-        renderChart('chartIdade', 'bar', porIdade, '#ff9f40');
-        renderChartPatologia(porPatologia);
+        // Adicionamos o nome do rótulo como último parâmetro
+        renderChart('chartSexo', 'doughnut', agrupar(filteredData, 'sexo'), ['#36a2eb', '#ff6384'], 'Pacientes');
+        renderChart('chartCidade', 'bar', agrupar(filteredData, 'municipio'), '#4bc0c0', 'Pacientes');
+        renderChart('chartIdade', 'bar', agruparFaixasEtarias(filteredData), '#ff9f40', 'Pacientes');
+        renderChartPatologia(agrupar(filteredData, 'indicacao'));
     }
-
-    // --- Helpers de Agrupamento ---
 
     function agrupar(data, key) {
         const counts = {};
@@ -207,95 +329,92 @@
         return faixas;
     }
 
-    // --- Funções de Renderização Chart.js ---
-
-    function renderChart(canvasId, type, dataObj, color) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        const labels = Object.keys(dataObj);
-        const data = Object.values(dataObj);
+    function renderChart(canvasId, type, dataObj, color, labelName) {
+        const el = document.getElementById(canvasId);
+        if (!el) return;
+        const ctx = el.getContext('2d');
 
         if (charts[canvasId]) charts[canvasId].destroy();
 
         charts[canvasId] = new Chart(ctx, {
             type: type,
             data: {
-                labels: labels,
+                labels: Object.keys(dataObj),
                 datasets: [{
-                    data: data,
-                    backgroundColor: Array.isArray(color) ? color : color,
-                    borderWidth: 1
+                    label: labelName || 'Quantidade', // Define 'Pacientes' ou fallback
+                    data: Object.values(dataObj),
+                    backgroundColor: color
                 }]
             },
             options: {
                 responsive: true,
-                plugins: { legend: { display: type === 'doughnut' } }
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: type === 'doughnut' // Mostra legenda apenas no gráfico de rosca (sexo)
+                    }
+                }
             }
         });
     }
 
     function renderChartPatologia(dataObj) {
         const sorted = Object.entries(dataObj).sort((a, b) => b[1] - a[1]).slice(0, 10);
-        const labels = sorted.map(i => i[0]);
-        const data = sorted.map(i => i[1]);
         const canvasId = 'chartPatologia';
-
+        const el = document.getElementById(canvasId);
+        if (!el) return;
         if (charts[canvasId]) charts[canvasId].destroy();
-
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        charts[canvasId] = new Chart(ctx, {
+        charts[canvasId] = new Chart(el.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Pacientes',
-                    data: data,
-                    backgroundColor: '#9966ff',
-                }]
+                labels: sorted.map(i => i[0]),
+                datasets: [{ label: 'Pacientes', data: sorted.map(i => i[1]), backgroundColor: '#9966ff' }]
             },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                plugins: { legend: { display: false } }
-            }
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
         });
     }
 
     function renderChartInr(dataValues) {
         const canvasId = 'chartInr';
-        const ctx = document.getElementById(canvasId).getContext('2d');
-
+        const el = document.getElementById(canvasId);
+        if (!el) return;
         if (charts[canvasId]) charts[canvasId].destroy();
-
-        charts[canvasId] = new Chart(ctx, {
+        charts[canvasId] = new Chart(el.getContext('2d'), {
             type: 'pie',
             data: {
-                labels: ['Abaixo da Meta (<2.0)', 'Na Meta (2.0 a 3.5)', 'Acima da Meta (>3.5)'],
-                datasets: [{
-                    data: dataValues,
-                    backgroundColor: ['#ffc107', '#198754', '#dc3545']
-                }]
-            }
+                labels: ['Abaixo', 'Na Meta', 'Acima'],
+                datasets: [{ data: dataValues, backgroundColor: ['#ffc107', '#198754', '#dc3545'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    // --- Utilitários ---
     function popularFiltroCidades() {
         const select = document.getElementById('filtroCidade');
-        const cidades = [...new Set(rawData.map(p => p.municipio))].sort();
+        const cidades = [...new Set(rawData.map(p => p.municipio))].filter(c => c && c !== 'Não Informado').sort();
         cidades.forEach(c => {
-            if(c){
-                const opt = document.createElement('option');
-                opt.value = c;
-                opt.innerText = c;
-                select.appendChild(opt);
-            }
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.innerText = c;
+            select.appendChild(opt);
         });
     }
 
     function resetarFiltros() {
         document.getElementById('filtroSexo').value = "";
         document.getElementById('filtroCidade').value = "";
+        const slider = document.getElementById('slider-temporal');
+        if (slider.noUiSlider) {
+            slider.noUiSlider.reset();
+        }
         atualizarDashboard();
     }
 </script>
+
+<style>
+    .noUi-connect { background: #0d6efd; }
+    .noUi-handle { border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+    .noUi-horizontal .noUi-handle { width: 24px; height: 24px; right: -12px; top: -4px; }
+    .noUi-handle:before, .noUi-handle:after { display: none; }
+</style>
 {% endblock %}

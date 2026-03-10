@@ -236,39 +236,42 @@ def api_paciente(request, id):
 @login_required
 @admin_only
 def api_dashboard(request):
-    """API que alimenta os gráficos e KPIs do Dashboard"""
-    pacientes = Paciente.objects.filter(ativo=True)
+    """API blindada para o Dashboard"""
+    # Busca pacientes ativos (considerando 1 ou True)
+    pacientes = Paciente.objects.filter(ativo__in=[True, 1]).prefetch_related('medicoes')
     hoje = date.today()
-    data_corte = timezone.now() - timedelta(days=30)
 
     lista_pacientes = []
     for p in pacientes:
-        idade = hoje.year - p.data_nascimento.year - ((hoje.month, hoje.day) < (p.data_nascimento.month,
-                                                                                p.data_nascimento.day)) if p.data_nascimento else 0
+        # Cálculo de idade seguro
+        idade = 0
+        if p.data_nascimento:
+            idade = hoje.year - p.data_nascimento.year - (
+                        (hoje.month, hoje.day) < (p.data_nascimento.month, p.data_nascimento.day))
 
-        # Identifica a meta do paciente para os cálculos de qualidade
+        # Identifica a meta
         meta_min, meta_max = 2.0, 3.0
         indicacao_txt = (p.indicacao or "").lower()
-        if 'prótese' in indicacao_txt or 'mecanica' in indicacao_txt:
+        if any(x in indicacao_txt for x in ['prótese', 'mecanica', 'protese', 'mecanica']):
             meta_min, meta_max = 2.5, 3.5
 
-        # Busca apenas os exames dos últimos 30 dias DESTE paciente
-        exames = p.medicoes.filter(data_medicao__gte=data_corte)
-        baixo = exames.filter(valor_inr__lt=meta_min).count()
-        meta = exames.filter(valor_inr__gte=meta_min, valor_inr__lte=meta_max).count()
-        alto = exames.filter(valor_inr__gt=meta_max).count()
+        # Captura medições garantindo formato de data string para JS
+        lista_medicoes = []
+        for m in p.medicoes.all():
+            if m.data_medicao:
+                lista_medicoes.append({
+                    'data': m.data_medicao.strftime('%Y-%m-%d'),
+                    'inr': m.valor_inr or 0.0
+                })
 
         lista_pacientes.append({
-            'sexo': 'Masculino' if p.sexo == 1 else 'Feminino',
+            'sexo': 'Masculino' if str(p.sexo) == '1' else 'Feminino',
             'idade': idade,
             'municipio': (p.municipio or "Não Informado").title(),
             'indicacao': (p.indicacao or "OUTROS").strip().upper(),
-            # Anexamos os exames do paciente ao JSON!
-            'exames_baixo': baixo,
-            'exames_meta': meta,
-            'exames_alto': alto,
-            'total_exames': baixo + meta + alto
+            'meta_min': meta_min,
+            'meta_max': meta_max,
+            'medicoes': lista_medicoes
         })
 
-    # Agora o frontend tem tudo o que precisa para calcular tudo sozinho!
-    return JsonResponse({'dados_pacientes': lista_pacientes})
+    return JsonResponse({'dados_pacientes': lista_pacientes}, safe=False)
