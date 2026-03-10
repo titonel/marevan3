@@ -1,0 +1,7 @@
+core/
+├── static/
+│   └── js/
+│       └── scripts.js
+└── templates/
+    ├── base.html
+    └── index.html

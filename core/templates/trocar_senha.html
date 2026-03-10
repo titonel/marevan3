@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm border-top border-warning border-3">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="bi bi-shield-lock-fill text-warning" style="font-size: 3rem;"></i>
+                    <h4 class="fw-light mt-2">Atualização de Segurança</h4>
+                    <p class="text-muted small">Para sua segurança, defina uma nova senha de acesso (mínimo 6 caracteres).</p>
+                </div>
+
+                <form method="POST" action="{% url 'trocar_senha' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Nova Senha</label>
+                        <input type="password" name="nova_senha" class="form-control bg-light" required autofocus minlength="6">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-muted">Confirme a Nova Senha</label>
+                        <input type="password" name="confirmacao" class="form-control bg-light" required minlength="6">
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-warning text-dark fw-bold">Atualizar e Entrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-primary fw-bold"><i class="bi bi-speedometer2"></i> Dashboard Clínico</h2>
+            <p class="text-muted mb-0">Análise demográfica e clínica em tempo real</p>
+        </div>
+        <div class="d-flex gap-2">
+            <select id="filtroSexo" class="form-select form-select-sm" onchange="atualizarDashboard()">
+                <option value="">Todos os Sexos</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+            </select>
+            <select id="filtroCidade" class="form-select form-select-sm" onchange="atualizarDashboard()">
+                <option value="">Todas as Cidades</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary" onclick="resetarFiltros()">Limpar</button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-start border-4 border-primary h-100">
+                <div class="card-body py-3">
+                    <small class="text-muted text-uppercase fw-bold">Pacientes Ativos</small>
+                    <h2 class="display-6 fw-bold text-dark mb-0" id="kpi-pacientes">--</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-start border-4 border-success h-100">
+                <div class="card-body py-3">
+                    <small class="text-muted text-uppercase fw-bold">Exames (Mês)</small>
+                    <h2 class="display-6 fw-bold text-dark mb-0" id="kpi-exames">--</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-start border-4 border-warning h-100">
+                <div class="card-body py-3">
+                    <small class="text-muted text-uppercase fw-bold">Na Meta (30d)</small>
+                    <h2 class="display-6 fw-bold text-dark mb-0" id="kpi-meta">--</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-start border-4 border-danger h-100">
+                <div class="card-body py-3">
+                    <small class="text-muted text-uppercase fw-bold">Fora da Meta</small>
+                    <h2 class="display-6 fw-bold text-dark mb-0" id="kpi-fora">--</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow border-0 h-100">
+                <div class="card-header bg-white fw-bold">Faixa Etária</div>
+                <div class="card-body">
+                    <canvas id="chartIdade"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow border-0 h-100">
+                <div class="card-header bg-white fw-bold">Distribuição por Sexo</div>
+                <div class="card-body">
+                    <canvas id="chartSexo" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow border-0 h-100">
+                <div class="card-header bg-white fw-bold">Controle INR (Geral)</div>
+                <div class="card-body">
+                    <canvas id="chartInr" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white fw-bold">Município de Residência</div>
+                <div class="card-body">
+                    <canvas id="chartCidade"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white fw-bold">Indicação Clínica (Top 10)</div>
+                <div class="card-body">
+                    <canvas id="chartPatologia"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Variáveis Globais
+    let rawData = [];
+    let charts = {};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        carregarDadosIniciais();
+    });
+
+    function carregarDadosIniciais() {
+        fetch('/api/dashboard/')
+            .then(r => {
+                if (!r.ok) throw new Error("Erro na resposta da API");
+                return r.json();
+            })
+            .then(data => {
+                // Armazena todos os dados brutos e preenche o filtro de cidades
+                rawData = data.dados_pacientes;
+                popularFiltroCidades();
+
+                // Desenha o Dashboard (isso também vai calcular os KPIs a primeira vez)
+                atualizarDashboard();
+            })
+            .catch(e => {
+                console.error("Erro ao carregar o dashboard:", e);
+                alert("Erro ao carregar os dados. Verifique a conexão com o servidor.");
+            });
+    }
+
+    // --- Lógica de Filtros, Processamento e KPIs ---
+
+    function atualizarDashboard() {
+        const sexFilter = document.getElementById('filtroSexo').value;
+        const cityFilter = document.getElementById('filtroCidade').value;
+
+        // 1. Filtra os Pacientes em tempo real
+        const filteredData = rawData.filter(p => {
+            return (sexFilter === "" || p.sexo === sexFilter) &&
+                   (cityFilter === "" || p.municipio === cityFilter);
+        });
+
+        // 2. ATUALIZA OS KPIs DO TOPO DA TELA DINAMICAMENTE
+        let kpiExames = 0;
+        let kpiBaixo = 0;
+        let kpiMeta = 0;
+        let kpiAlto = 0;
+
+        // Soma os exames APENAS dos pacientes que passaram no filtro
+        filteredData.forEach(p => {
+            kpiExames += p.total_exames;
+            kpiBaixo += p.exames_baixo;
+            kpiMeta += p.exames_meta;
+            kpiAlto += p.exames_alto;
+        });
+
+        const totalInr = kpiBaixo + kpiMeta + kpiAlto;
+
+        // Preenche os cartões
+        document.getElementById('kpi-pacientes').innerText = filteredData.length;
+        document.getElementById('kpi-exames').innerText = kpiExames;
+        document.getElementById('kpi-meta').innerText = totalInr ? ((kpiMeta/totalInr)*100).toFixed(0) + '%' : '0%';
+        document.getElementById('kpi-fora').innerText = totalInr ? (((totalInr - kpiMeta)/totalInr)*100).toFixed(0) + '%' : '0%';
+
+        // Atualiza também o Gráfico de Pizza de INR com os dados filtrados
+        renderChartInr([kpiBaixo, kpiMeta, kpiAlto]);
+
+        // 3. Atualiza os demais gráficos
+        const porSexo = agrupar(filteredData, 'sexo');
+        const porCidade = agrupar(filteredData, 'municipio');
+        const porPatologia = agrupar(filteredData, 'indicacao');
+        const porIdade = agruparFaixasEtarias(filteredData);
+
+        renderChart('chartSexo', 'doughnut', porSexo, ['#36a2eb', '#ff6384']);
+        renderChart('chartCidade', 'bar', porCidade, '#4bc0c0');
+        renderChart('chartIdade', 'bar', porIdade, '#ff9f40');
+        renderChartPatologia(porPatologia);
+    }
+
+    // --- Helpers de Agrupamento ---
+
+    function agrupar(data, key) {
+        const counts = {};
+        data.forEach(item => {
+            const val = item[key] || 'Não Informado';
+            counts[val] = (counts[val] || 0) + 1;
+        });
+        return counts;
+    }
+
+    function agruparFaixasEtarias(data) {
+        const faixas = { '18-30': 0, '31-50': 0, '51-70': 0, '70+': 0 };
+        data.forEach(p => {
+            if (p.idade <= 30) faixas['18-30']++;
+            else if (p.idade <= 50) faixas['31-50']++;
+            else if (p.idade <= 70) faixas['51-70']++;
+            else faixas['70+']++;
+        });
+        return faixas;
+    }
+
+    // --- Funções de Renderização Chart.js ---
+
+    function renderChart(canvasId, type, dataObj, color) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        const labels = Object.keys(dataObj);
+        const data = Object.values(dataObj);
+
+        if (charts[canvasId]) charts[canvasId].destroy();
+
+        charts[canvasId] = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: Array.isArray(color) ? color : color,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: type === 'doughnut' } }
+            }
+        });
+    }
+
+    function renderChartPatologia(dataObj) {
+        const sorted = Object.entries(dataObj).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        const labels = sorted.map(i => i[0]);
+        const data = sorted.map(i => i[1]);
+        const canvasId = 'chartPatologia';
+
+        if (charts[canvasId]) charts[canvasId].destroy();
+
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        charts[canvasId] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Pacientes',
+                    data: data,
+                    backgroundColor: '#9966ff',
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function renderChartInr(dataValues) {
+        const canvasId = 'chartInr';
+        const ctx = document.getElementById(canvasId).getContext('2d');
+
+        if (charts[canvasId]) charts[canvasId].destroy();
+
+        charts[canvasId] = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Abaixo da Meta (<2.0)', 'Na Meta (2.0 a 3.5)', 'Acima da Meta (>3.5)'],
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: ['#ffc107', '#198754', '#dc3545']
+                }]
+            }
+        });
+    }
+
+    // --- Utilitários ---
+    function popularFiltroCidades() {
+        const select = document.getElementById('filtroCidade');
+        const cidades = [...new Set(rawData.map(p => p.municipio))].sort();
+        cidades.forEach(c => {
+            if(c){
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.innerText = c;
+                select.appendChild(opt);
+            }
+        });
+    }
+
+    function resetarFiltros() {
+        document.getElementById('filtroSexo').value = "";
+        document.getElementById('filtroCidade').value = "";
+        atualizarDashboard();
+    }
+</script>
+{% endblock %}
