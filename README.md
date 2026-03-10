@@ -35,10 +35,25 @@ Abra o terminal na pasta onde deseja instalar o sistema e clone/baixe o reposit�
 
 ```bash
 # Cria o ambiente virtual chamado 'venv'
-python -m venv venv
+python -m venv .venv
 
 # Ativa o ambiente virtual (Windows)
-venv\Scripts\activate
+.venv\Scripts\activate
 
 # Ativa o ambiente virtual (Linux/Mac)
-source venv/bin/activate
+source .venv/bin/activate
+
+# Instala as dependências
+pip install django
+
+# Prepara os arquivos de migração baseados nos modelos do sistema
+python manage.py makemigrations core
+
+# Aplica as migrações e cria as tabelas no banco de dados
+python manage.py migrate
+
+# Criação de um Novo Superusuário (Administrador)
+python manage.py createsuperuser
+
+# Executando o Servidor
+python manage.py runserver
