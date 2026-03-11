@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.hashers import make_password
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Q
@@ -275,3 +276,69 @@ def api_dashboard(request):
         })
 
     return JsonResponse({'dados_pacientes': lista_pacientes}, safe=False)
+
+@login_required
+@admin_only
+def painel_admin(request):
+    """Área central de configurações para administradores"""
+    usuarios = Usuario.objects.all().order_by('username')
+    total_pacientes = Paciente.objects.count()
+    return render(request, 'admin/painel.html', {
+        'usuarios': usuarios,
+        'total_pacientes': total_pacientes
+    })
+
+@login_required
+@admin_only
+def gerenciar_usuarios(request):
+    """Lista e permite ações sobre os usuários do sistema"""
+    usuarios = Usuario.objects.all().order_by('first_name')
+    return render(request, 'admin/usuarios.html', {'usuarios': usuarios})
+
+@login_required
+@admin_only
+def toggle_usuario_status(request, user_id):
+    """Ativa/Desativa um usuário (semelhante ao hipertensao)"""
+    user = get_object_or_404(Usuario, id=user_id)
+    if user == request.user:
+        messages.error(request, "Você não pode desativar seu próprio usuário.")
+    else:
+        user.is_active = not user.is_active
+        user.save()
+        messages.success(request, f"Status de {user.username} atualizado.")
+    return redirect('gerenciar_usuarios')
+
+@login_required
+@admin_only
+def gerenciar_pacientes_admin(request):
+    """Visão administrativa para auditoria de pacientes"""
+    pacientes = Paciente.objects.all().order_by('-data_insercao')
+    return render(request, 'admin/pacientes_admin.html', {'pacientes': pacientes})
+
+
+@login_required
+@admin_only
+def criar_usuario(request):
+    if request.method == 'POST':
+        username = request.POST.get('username').lower()
+        email = request.POST.get('email')
+        nome = request.POST.get('nome')
+        perfil = request.POST.get('perfil')  # 'admin' ou 'saude'
+
+        if Usuario.objects.filter(username=username).exists():
+            messages.error(request, "Este nome de usuário já existe.")
+            return redirect('gerenciar_usuarios')
+
+        # Criamos o usuário com uma senha padrão temporária: 'Marevan@123'
+        novo_user = Usuario.objects.create(
+            username=username,
+            email=email,
+            first_name=nome,
+            password=make_password('Marevan@123'),
+            is_staff=(perfil == 'admin'),
+            is_superuser=(perfil == 'admin'),
+            mudar_senha=True  # Força a troca no primeiro login
+        )
+
+        messages.success(request, f"Usuário {username} criado! Senha temporária: Marevan@123")
+    return redirect('gerenciar_usuarios')

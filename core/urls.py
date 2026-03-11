@@ -20,4 +20,11 @@ urlpatterns = [
     # APIs para o JavaScript (Substituindo o comportamento do Flask)
     path('api/paciente/<int:id>/', views.api_paciente, name='api_paciente'),
     path('api/dashboard/', views.api_dashboard, name='api_dashboard'),
+
+    # Administração do site
+    path('admin-painel/', views.painel_admin, name='painel_admin'),
+    path('admin-painel/usuarios/', views.gerenciar_usuarios, name='gerenciar_usuarios'),
+    path('admin-painel/usuario/toggle/<int:user_id>/', views.toggle_usuario_status, name='toggle_usuario_status'),
+    path('admin-painel/usuario/criar/', views.criar_usuario, name='criar_usuario'),
+    path('admin-painel/pacientes/', views.gerenciar_pacientes_admin, name='gerenciar_pacientes_admin'),
 ]

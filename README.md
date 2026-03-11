@@ -56,4 +56,4 @@ python manage.py migrate
 python manage.py createsuperuser
 
 # Executando o Servidor
-python manage.py runserver
+python manage.py runserv

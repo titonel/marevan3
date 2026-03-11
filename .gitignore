@@ -1,0 +1,15 @@
+# Ambiente Virtual
+venv/
+.venv/
+env/
+
+# Banco de dados (Não envie o db.sqlite3 se ele contiver dados reais de pacientes)
+*.sqlite3
+marevan.db
+
+# Byte-compiled / pastas do Python
+__pycache__/
+*.py[cod]
+
+# Configurações do IDE (PyCharm)
+.idea/
