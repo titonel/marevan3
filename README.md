@@ -16,7 +16,7 @@ Este projeto é um sistema web desenvolvido para a gestão e monitoramento de pa
 
 * **Backend**: Python 3.x, Django 5.x
 * **Frontend**: HTML5, Bootstrap 5, Vanilla JavaScript, Chart.js (Dashboard)
-* **Banco de Dados**: SQLite (padrão para fácil implantação, podendo ser migrado para PostgreSQL/MySQL em produção).
+* **Banco de Dados**: SQLite (padrão para fácil implantação, podendo ser migrado para PostgreSQL/MySQL).
 
 ---
 
@@ -26,7 +26,7 @@ O guia abaixo descreve os comandos essenciais para configurar o ambiente de dese
 
 ### 1. Preparando o Ambiente
 
-Certifique-se de ter o [Python](https://www.python.org/downloads/) instalado na máquina (versão 3.14 ou superior recomendada). 
+Certifique-se de ter o [Python](https://www.python.org/downloads/) instalado na máquina (versão 3.14 ou superior). 
 
 Abra o terminal na pasta onde deseja instalar o sistema e clone/baixe o repositório.
 
@@ -57,3 +57,18 @@ python manage.py createsuperuser
 
 # Executando o Servidor
 python manage.py runserv
+```
+
+### Para realizar commit no Git (opcional)
+``` bash
+git add .
+git commit -m "Mensagem do commit"
+git push origin main
+
+"Caso haja erro no commit por divergência de branches, utilize:
+git pull origin main --rebase
+git push origin main
+
+"Caso ainda assim persista o erro, force o push (cuidado, pois isso pode sobrescrever mudanças remotas):
+git push origin main --force
+```
