@@ -35,5 +35,17 @@
             </div>
         </div>
     </div>
+
+    {% if user.is_superuser %}
+    <div class="col-md-3 mb-3">
+        <div class="card card-menu h-100 text-center py-4 border-0 shadow-sm border-top border-4 border-dark" onclick="location.href='{% url 'painel_admin' %}'">
+            <div class="card-body">
+                <i class="bi bi-shield-lock-fill text-dark display-4"></i>
+                <h5 class="card-title mt-3">Administração</h5>
+                <p class="text-muted small">Gestão de Usuários e Auditoria</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
