@@ -4,15 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="88a2957b-e26d-45d5-aeb3-3c7698f50fa4" name="Changes" comment="README.md atualizado">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="88a2957b-e26d-45d5-aeb3-3c7698f50fa4" name="Changes" comment="Feat: Gestão de Usuários completa">
+      <change afterPath="$PROJECT_DIR$/deploy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/marevan3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/marevan3.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/templates/admin/usuarios.html" beforeDir="false" afterPath="$PROJECT_DIR$/core/templates/admin/usuarios.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/core/templates/base.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/core/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/core/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/marevan.db" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,8 +24,8 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Python Script" />
         <option value="HTML File" />
+        <option value="Python Script" />
       </list>
     </option>
   </component>
@@ -121,13 +117,22 @@
       <option name="project" value="LOCAL" />
       <updated>1773241667064</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Feat: Gestão de Usuários completa">
+      <option name="closed" value="true" />
+      <created>1773337317348</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1773337317348</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="LC Marevan 3 - commit inicial" />
     <MESSAGE value="README.md atualizado" />
-    <option name="LAST_COMMIT_MESSAGE" value="README.md atualizado" />
+    <MESSAGE value="Feat: Gestão de Usuários completa" />
+    <option name="LAST_COMMIT_MESSAGE" value="Feat: Gestão de Usuários completa" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
