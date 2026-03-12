@@ -26,5 +26,7 @@ urlpatterns = [
     path('admin-painel/usuarios/', views.gerenciar_usuarios, name='gerenciar_usuarios'),
     path('admin-painel/usuario/toggle/<int:user_id>/', views.toggle_usuario_status, name='toggle_usuario_status'),
     path('admin-painel/usuario/criar/', views.criar_usuario, name='criar_usuario'),
+    path('admin-painel/usuario/salvar/', views.salvar_usuario, name='salvar_usuario'),
+    path('admin-painel/usuario/excluir/<int:user_id>/', views.excluir_usuario, name='excluir_usuario'),
     path('admin-painel/pacientes/', views.gerenciar_pacientes_admin, name='gerenciar_pacientes_admin'),
 ]

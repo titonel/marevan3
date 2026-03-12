@@ -342,3 +342,52 @@ def criar_usuario(request):
 
         messages.success(request, f"Usuário {username} criado! Senha temporária: Marevan@123")
     return redirect('gerenciar_usuarios')
+
+
+# Adicione em core/views.py
+
+@login_required
+@admin_only
+def salvar_usuario(request):
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        username = request.POST.get('username').lower()
+        email = request.POST.get('email')
+        nome = request.POST.get('nome')
+        perfil = request.POST.get('perfil')
+
+        if user_id:  # Edição
+            u = get_object_or_404(Usuario, id=user_id)
+            if Usuario.objects.filter(username=username).exclude(id=user_id).exists():
+                messages.error(request, "Este nome de usuário já existe.")
+                return redirect('gerenciar_usuarios')
+            u.username = username
+        else:  # Criação de novo
+            if Usuario.objects.filter(username=username).exists():
+                messages.error(request, "Este nome de usuário já existe.")
+                return redirect('gerenciar_usuarios')
+            u = Usuario(username=username)
+            u.password = make_password('Marevan@123')
+            u.mudar_senha = True
+
+        u.email = email
+        u.first_name = nome
+        u.is_staff = (perfil == 'admin')
+        u.is_superuser = (perfil == 'admin')
+        u.save()
+
+        messages.success(request, f"Usuário {username} salvo com sucesso!")
+    return redirect('gerenciar_usuarios')
+
+
+@login_required
+@admin_only
+def excluir_usuario(request, user_id):
+    user_to_delete = get_object_or_404(Usuario, id=user_id)
+    if user_to_delete == request.user:
+        messages.error(request, "Você não pode excluir seu próprio usuário.")
+    else:
+        nome_usuario = user_to_delete.username
+        user_to_delete.delete()
+        messages.success(request, f"Usuário {nome_usuario} removido permanentemente.")
+    return redirect('gerenciar_usuarios')

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="text-primary"><i class="bi bi-shield-lock"></i> Gestão de Usuários</h2>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovoUsuario">
+    <button class="btn btn-primary" onclick="novoUsuario()">
         <i class="bi bi-person-plus"></i> Novo Usuário
     </button>
 </div>
@@ -43,9 +43,23 @@
                         {% endif %}
                     </td>
                     <td class="text-end pe-4">
-                        <a href="{% url 'toggle_usuario_status' u.id %}" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
-                            {% if u.is_active %}Desativar{% else %}Ativar{% endif %}
+                        <button class="btn btn-sm btn-outline-primary"
+                                onclick="editarUsuario('{{ u.id }}', '{{ u.first_name }}', '{{ u.username }}', '{{ u.email }}', '{% if u.is_superuser %}admin{% else %}saude{% endif %}')"
+                                title="Editar Usuário">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+
+                        <a href="{% url 'toggle_usuario_status' u.id %}"
+                           class="btn btn-sm {% if u.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                           title="Alterar Status">
+                            {% if u.is_active %}Inativar{% else %}Ativar{% endif %}
                         </a>
+
+                        <button class="btn btn-sm btn-outline-danger"
+                                onclick="confirmarExclusao('{{ u.id }}', '{{ u.username }}')"
+                                title="Excluir Permanentemente">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -53,45 +67,86 @@
         </table>
     </div>
 </div>
-<div class="modal fade" id="modalNovoUsuario" tabindex="-1" aria-hidden="true">
+
+<div class="modal fade" id="modalUsuario" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="{% url 'criar_usuario' %}" method="POST">
+            <form action="{% url 'salvar_usuario' %}" method="POST" id="formUsuario">
                 {% csrf_token %}
+                <input type="hidden" name="user_id" id="edit_user_id">
+
                 <div class="modal-header">
-                    <h5 class="modal-title">Cadastrar Novo Operador</h5>
+                    <h5 class="modal-title" id="usuarioModalTitulo">Cadastrar Novo Operador</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Nome Completo</label>
-                        <input type="text" name="nome" class="form-control" required>
+                        <input type="text" name="nome" id="edit_nome" class="form-control" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Username (Login)</label>
-                        <input type="text" name="username" class="form-control" placeholder="ex: saulo.bastos" required>
+                        <input type="text" name="username" id="edit_username" class="form-control" placeholder="ex: saulo.bastos" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">E-mail</label>
-                        <input type="email" name="email" class="form-control" required>
+                        <input type="email" name="email" id="edit_email" class="form-control" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Perfil de Acesso</label>
-                        <select name="perfil" class="form-select">
+                        <select name="perfil" id="edit_perfil" class="form-select">
                             <option value="saude">Equipe de Saúde (Leitura/Escrita)</option>
                             <option value="admin">Administrador (Acesso Total)</option>
                         </select>
                     </div>
-                    <div class="alert alert-info small">
+                    <div id="avisoSenha" class="alert alert-info small">
                         <i class="bi bi-info-circle"></i> A senha inicial será <strong>Marevan@123</strong>. O usuário será obrigado a alterá-la no primeiro acesso.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Criar Usuário</button>
+                    <button type="submit" class="btn btn-primary">Salvar Usuário</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Função para preparar o modal para EDIÇÃO
+    function editarUsuario(id, nome, username, email, perfil) {
+        document.getElementById('edit_user_id').value = id;
+        document.getElementById('edit_nome').value = nome;
+        document.getElementById('edit_username').value = username;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_perfil').value = perfil;
+
+        document.getElementById('usuarioModalTitulo').innerText = 'Editar Usuário: ' + username;
+        document.getElementById('avisoSenha').style.display = 'none'; // Esconde aviso de senha na edição
+
+        const modalEl = document.getElementById('modalUsuario');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    // Função para preparar o modal para NOVO USUÁRIO
+    function novoUsuario() {
+        document.getElementById('formUsuario').reset();
+        document.getElementById('edit_user_id').value = '';
+
+        document.getElementById('usuarioModalTitulo').innerText = 'Cadastrar Novo Operador';
+        document.getElementById('avisoSenha').style.display = 'block';
+
+        const modalEl = document.getElementById('modalUsuario');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    // Função para confirmação de exclusão
+    function confirmarExclusao(id, username) {
+        if(confirm(`ATENÇÃO: Deseja realmente EXCLUIR permanentemente o usuário ${username}?\nEsta ação não poderá ser desfeita.`)) {
+            window.location.href = `/admin-painel/usuario/excluir/${id}/`;
+        }
+    }
+</script>
 {% endblock %}

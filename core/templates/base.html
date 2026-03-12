@@ -50,10 +50,8 @@
     <script src="{% static 'js/scripts.js' %}"></script>
 </body>
 {% if user.is_superuser %}
-<li class="nav-item">
-    <a class="nav-link {% if 'admin' in request.path %}active{% endif %}" href="{% url 'painel_admin' %}">
+    <a class="btn btn-outline-dark btn-sm me-2" href="{% url 'painel_admin' %}">
         <i class="bi bi-gear-fill"></i> Administração
     </a>
-</li>
 {% endif %}
 </html>
