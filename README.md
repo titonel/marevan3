@@ -46,6 +46,9 @@ source .venv/bin/activate
 # Instala as dependências
 pip install django
 
+# Prepara o ambiente
+django-admin startproject [nome]
+
 # Prepara os arquivos de migração baseados nos modelos do sistema
 python manage.py makemigrations core
 
